@@ -1,0 +1,23 @@
+FROM mcr.microsoft.com/dotnet/aspnet:3.1 AS base
+WORKDIR /app
+EXPOSE 80
+
+FROM mcr.microsoft.com/dotnet/sdk:3.1 AS build
+WORKDIR /src
+COPY ["Code/dotnetedit.Api/dotnetedit.Api.csproj", "Code/dotnetedit.Api/"]
+COPY ["Code/dotnetedit.Business/dotnetedit.Business.csproj", "Code/dotnetedit.Business/"]
+COPY ["Code/dotnetedit.Data/dotnetedit.Data.csproj", "Code/dotnetedit.Data/"]
+COPY ["Code/dotnetedit.Entities/dotnetedit.Entities.csproj", "Code/dotnetedit.Entities/"]
+COPY ["Code/dotnetedit.Test.Api/dotnetedit.Test.Api.csproj", "Code/dotnetedit.Test.Api/"]
+COPY ["Code/dotnetedit.Test.Business/dotnetedit.Test.Business.csproj", "Code/dotnetedit.Test.Business/"]
+RUN dotnet restore "Code/dotnetedit.Api/dotnetedit.Api.csproj"
+COPY . .
+WORKDIR "/src/Code/dotnetedit.Api"
+RUN dotnet build "dotnetedit.Api.csproj" -c Release -o /app/build
+
+FROM build AS publish
+RUN dotnet publish "dotnetedit.Api.csproj" -c Release -o /app/publish
+
+WORKDIR /src
+RUN dotnet test --results-directory /testresults --logger "trx;LogFileName=testresults.Api.trx" /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:CoverletOutput=/testresults/coverage/ /p:MergeWith=/testresults/coverage/coverage.json "Code/dotnetedit.Test.Api/dotnetedit.Test.Api.csproj"
+RUN dotnet test --results-directory /testresults --logger "trx;LogFileName=testresults.Api.trx" /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:CoverletOutput=/testresults/coverage/ /p:MergeWith=/testresults/coverage/coverage.json "Code/dotnetedit.Test.Business/dotnetedit.Test.Business.csproj"
